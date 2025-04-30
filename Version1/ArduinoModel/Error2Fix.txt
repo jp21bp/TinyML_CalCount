@@ -1,0 +1,90 @@
+After the model input shapes were fixed, the following Arduino error appeared:
+* Invoke failed
+C:\Users\jwpar\OneDrive\Documents\Arduino\libraries\tflite-micro-arduino-examples-main\src\tensorflow\lite\micro\kernels\cmsis_nn\conv.cpp Hybrid models are not supported on TFLite Micro.
+Node CONV_2D (number 2) failed to invoke with status 1
+Invoke failed
+
+
+
+Going into the folder mentioned, the associated lines of code were:
+* TF_LITE_ENSURE_MSG(
+      context,
+      input->type == filter->type ||
+          (input->type == kTfLiteInt16 && filter->type == kTfLiteInt8) ||
+          (input->type == kTfLiteInt8 && filter->type == kTfLiteInt4),
+      "Hybrid models are not supported on TFLite Micro.");
+
+Upon further research, this error appears due to a difference in the 
+	quantized data types between input and filters
+* The way to solve this is to create a "representative_dataset" of the input
+  - This must be done after the converter is set up, but before converter 
+		is executed
+  - Data from the test/val set will be used for this task
+
+
+
+
+
+
+
+For some reason, my representation type doesn't work
+* Instead, I tried to bring out a smaller model, but got the following error:
+  -
+* Therefore I'll need to try different models, layers, and sizes to further investigate
+
+
+Models and errors (all with default quantization):
+* Consider the following notation: 
+  - C(x) = Convolution layer with x filter
+  - L(x, T/F) = LSTM layer with x dim, with T/F for 'return_sequence'
+  - D(x) = Dense layer with x units
+  - I([x]) = Input layer with shape [x]
+  - R([x]) = Reshape layer into shape [x]
+  - TS/NC = TimeStep/NumChannel = 50/3
+
+* Original/ideal model: 
+  - I([TS*1*NC]), R([TS, 1, NC]), C(32), C(32), C(64), R([-1,64]), L(64,T), L(64,F), D(32),  D(8), D(1)
+  - Error:
+Invoke failed
+C:\Users\jwpar\OneDrive\Documents\Arduino\libraries\tflite-micro-arduino-examples-main\src\tensorflow\lite\micro\kernels\cmsis_nn\conv.cpp Hybrid models are not supported on TFLite Micro.
+Node CONV_2D (number 2) failed to invoke with status 1
+
+*Model 2:
+  - I([TS*1*NC]), R([TS, 1, NC]), C(32), C(32), R([-1,32]), L(64,T), L(64,F), D(32),  D(8), D(1)
+  - Error:
+Invoke failed
+C:\Users\jwpar\OneDrive\Documents\Arduino\libraries\tflite-micro-arduino-examples-main\src\tensorflow\lite\micro\kernels\cmsis_nn\conv.cpp Hybrid models are not supported on TFLite Micro.
+Node CONV_2D (number 2) failed to invoke with status 1
+
+*Model 3:
+  - I([TS*1*NC]), R([TS, 1, NC]), C(32), C(32), C(64), R([-1,64]), L(64,F), D(32),  D(8), D(1)
+  - Error:
+Invoke failed
+C:\Users\jwpar\OneDrive\Documents\Arduino\libraries\tflite-micro-arduino-examples-main\src\tensorflow\lite\micro\kernels\cmsis_nn\conv.cpp Hybrid models are not supported on TFLite Micro.
+Node CONV_2D (number 2) failed to invoke with status 1
+
+*Model 4:
+  - I([TS*1*NC]), R([TS, 1, NC]), C(32), R([-1,64]), L(64,T), L(64,F), D(32),  D(8), D(1)
+  - Error:
+Invoke failed
+Type INT32 (2) not supported.
+Node ADD (number 0) failed to invoke with status 1
+Node WHILE (number 3) failed to invoke with status 1
+  
+
+				----!!!! DISCOVERY !!!! ----: 
+* This change in error in Model 4 shows that the "hybrid model" error occurs when doing operations from the output of ConvLayer1 with weights of ConvLayer2
+    i. Specifically, this arises from the fact that only the weights, and NOT the activations, are quantized to int8
+    ii. Therefore, when the outputs/activations (float32) of ConvLayer1 try to operate with the weights of ConvLayer2(Int8), that's where the issue arises
+    iii. HOWEVER, this also implies we have another issue at hand, namely the "ADD/WHILE" error from this model
+    iv. Even if we use a representative dataset to quantize the activations into Int8, we MIGHT still bump into INT32 not supported (would we???)
+
+
+
+
+
+
+
+
+
+

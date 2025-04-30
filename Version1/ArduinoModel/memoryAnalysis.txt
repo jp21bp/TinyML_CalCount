@@ -1,0 +1,61 @@
+// with ops in place
+Sketch uses 366752 bytes (37%) of program storage space. Maximum is 983040 bytes.
+Global variables use 234688 bytes (89%) of dynamic memory, leaving 27456 bytes for local variables. Maximum is 262144 bytes.
+
+// with ops ommitted
+Sketch uses 293000 bytes (29%) of program storage space. Maximum is 983040 bytes.
+Global variables use 234016 bytes (89%) of dynamic memory, leaving 28128 bytes for local variables. Maximum is 262144 bytes.
+
+
+
+
+
+
+
+//With model
+Sketch uses 293000 bytes (29%) of program storage space. Maximum is 983040 bytes.
+Global variables use 234016 bytes (89%) of dynamic memory, leaving 28128 bytes for local variables. Maximum is 262144 bytes.
+
+
+// without model => model is 187,936 bytes
+Sketch uses 104992 bytes (10%) of program storage space. Maximum is 983040 bytes.
+Global variables use 46080 bytes (17%) of dynamic memory, leaving 216064 bytes for local variables. Maximum is 262144 bytes.
+	// Implies 46080 byte is needed for other things
+
+
+
+
+
+
+// with kTensorArenaSize = 20 * 1024
+Sketch uses 384792 bytes (39%) of program storage space. Maximum is 983040 bytes.
+Global variables use 255376 bytes (97%) of dynamic memory, leaving 6768 bytes for local variables. Maximum is 262144 bytes.
+
+
+// with kTensorArenaSize = 15 * 1024
+Sketch uses 384792 bytes (39%) of program storage space. Maximum is 983040 bytes.
+Global variables use 250256 bytes (95%) of dynamic memory, leaving 11888 bytes for local variables. Maximum is 262144 bytes.
+
+
+
+
+
+
+* At the end of uploading, the following error shows:
+  -Failed to resize buffer. Requested: 62528, available 13760, missing: 48768
+    i. This was with kTensorArenaSize = 20 * 1024
+* Changing kTensorArenaSize = 15 * 1024 leads to following error:
+  - Failed to resize buffer. Requested: 62528, available 8640, missing: 53888
+* This implies that the inputs buffer needs more space
+  - Only place to get more space is to reduce model size
+
+
+
+
+Current mem analysis:
+- Total avaialble: 262,144
+- Ops require: 234688 - 234016 = 672
+- Buffer requires: 62,528 (=> 62 * 1024)
+- Space for device cushion: 6,656
+- Space need for other things: 46,080
+=> Therefore model upperbound: 146,208 bytes = 142.78 Kb

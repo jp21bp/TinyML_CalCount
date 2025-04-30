@@ -1,0 +1,17 @@
+The model originally used for this version had the following details:
+ * Input shape = (1,50,1,3)
+ * Output shape = (1,)
+
+When trying to run this model on Arduino, it became evident that the input
+and output shapes naturally used in Tensorflow lite micro were (1,None)
+ * In other words, they were 2d arrays
+
+There was no issue with output, but the input needed to be changed to be 2d
+ * Since there's no way to reshape a buffer in arduino (without external libraries),
+   this meant we had to retrain the model with the proper new input
+
+All it required was:
+ * Changing the model training generators to match the new shape
+ * Changing the "Input", first layer in the model to be (1, 50*1*3)
+ * Then adding in a new "Reshape" layer as a second layer in order to get
+   the desired (1,50,1,3)
